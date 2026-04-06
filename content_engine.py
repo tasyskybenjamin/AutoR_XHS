@@ -412,7 +412,7 @@ def demo():
         model = "claude-sonnet-4-20250514"
     elif os.environ.get("MINIMAX_API_KEY"):
         provider = "minimax"
-        model = "MiniMax-Text-01"  # Minimax 模型名
+        model = "MiniMax-M2.7"  # Minimax 模型名
     else:
         provider = "openai"
         model = "gpt-4o"

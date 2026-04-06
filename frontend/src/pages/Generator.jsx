@@ -41,34 +41,15 @@ export default function Generator() {
         body: JSON.stringify({ topic, niche, goal, num_candidates: numCandidates }),
       })
 
-      if (!response.ok) throw new Error('生成失败')
-
       const data = await response.json()
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || '生成失败')
+      }
+
       setResults(data)
     } catch (err) {
       setError(err.message)
-      // Mock data for demo
-      setResults({
-        candidates: [
-          {
-            title: '7天淡纹，我找到了平价替代！',
-            cover_text: '7天淡纹秘诀',
-            content: '作为一个干皮，我用过无数精华...',
-            tags: ['护肤', '平价好物', '干货分享'],
-            score: 5.2,
-            dimension_scores: {
-              opening_hook: 1.0,
-              life_metaphor: 0.8,
-              verifiable_numbers: 1.0,
-              no_cliches: 1.0,
-              specific_question: 0.7,
-              word_count: 1.0,
-            },
-            feedback: '内容质量良好！',
-          },
-        ],
-        best_candidate: null,
-      })
     } finally {
       setIsGenerating(false)
     }
@@ -172,20 +153,23 @@ export default function Generator() {
 
         {/* Results */}
         <div className="col-span-2">
-          {results ? (
+          {results && !error ? (
             <div className="space-y-6">
               {/* Best Result */}
-              {results.best_candidate && (
+              {(results.best_candidate || results.candidates?.[0]) && (
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <span className="text-yellow-500">🏆</span>
                     最优推荐
                   </h3>
-                  <ContentCard content={results.best_candidate} rank={1} />
+                  <ContentCard
+                    content={results.best_candidate || results.candidates[0]}
+                    rank={1}
+                  />
                   <div className="mt-4">
                     <ScoreCard
-                      scores={results.best_candidate.dimension_scores}
-                      totalScore={results.best_candidate.score}
+                      scores={(results.best_candidate || results.candidates[0]).dimension_scores}
+                      totalScore={(results.best_candidate || results.candidates[0]).score}
                     />
                   </div>
                 </div>

@@ -53,17 +53,20 @@ def get_engine():
 
     if os.environ.get("MINIMAX_API_KEY"):
         return ContentEngine(
-            model="MiniMax-Text-01",
+            model="MiniMax-M2.7",
+            api_key=os.environ.get("MINIMAX_API_KEY"),
             model_provider="minimax"
         )
     elif os.environ.get("ANTHROPIC_API_KEY"):
         return ContentEngine(
             model="claude-sonnet-4-20250514",
+            api_key=os.environ.get("ANTHROPIC_API_KEY"),
             model_provider="anthropic"
         )
     else:
         return ContentEngine(
             model="gpt-4o",
+            api_key=api_key,
             model_provider="openai"
         )
 
@@ -104,6 +107,8 @@ async def score_content(req: ScoreRequest):
 @app.post("/api/generate")
 async def generate_content(req: GenerateRequest):
     """Generate content using AI"""
+    import traceback
+
     engine = get_engine()
 
     if not engine:
@@ -141,7 +146,7 @@ async def generate_content(req: GenerateRequest):
             } if result.best_candidate else None,
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
 @app.get("/api/history")
