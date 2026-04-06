@@ -19,6 +19,13 @@ try:
 except ImportError:
     anthropic = None
 
+# Minimax API compatible with OpenAI SDK
+try:
+    from openai import OpenAI as MinimaxClient
+    MINIMAX_AVAILABLE = True
+except ImportError:
+    MINIMAX_AVAILABLE = False
+
 from scorer import ContentScorer, ScoreResult
 
 
@@ -63,7 +70,7 @@ class ContentEngine:
         Args:
             model: 模型名称
             api_key: API密钥（如果为None则从环境变量读取）
-            model_provider: 模型提供商 ("openai" | "anthropic")
+            model_provider: 模型提供商 ("openai" | "anthropic" | "minimax")
         """
         self.model = model
         self.model_provider = model_provider
@@ -76,6 +83,13 @@ class ContentEngine:
             if anthropic is None:
                 raise ImportError("anthropic package not installed")
             self.client = anthropic.Anthropic(api_key=api_key)
+        elif model_provider == "minimax":
+            if not MINIMAX_AVAILABLE:
+                raise ImportError("openai package not installed (required for minimax)")
+            self.client = MinimaxClient(
+                api_key=api_key,
+                base_url="https://api.minimax.chat/v1"
+            )
         else:
             raise ValueError(f"Unknown model provider: {model_provider}")
 
@@ -218,6 +232,19 @@ class ContentEngine:
                 ]
             )
             return response.content[0].text
+
+        elif self.model_provider == "minimax":
+            # Minimax uses OpenAI-compatible API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.8,
+                max_tokens=4000
+            )
+            return response.choices[0].message.content
 
     def _parse_response(
         self,
@@ -368,16 +395,29 @@ class ContentEngine:
 def demo():
     """演示内容生成"""
     # 检查是否有API密钥
-    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+    api_key = (
+        os.environ.get("OPENAI_API_KEY") or
+        os.environ.get("ANTHROPIC_API_KEY") or
+        os.environ.get("MINIMAX_API_KEY")
+    )
 
     if not api_key:
         print("⚠️ 未设置 API 密钥，使用模拟模式演示")
-        print("请设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY 环境变量")
+        print("请设置 OPENAI_API_KEY / ANTHROPIC_API_KEY / MINIMAX_API_KEY 环境变量")
         return
 
-    # 初始化引擎
-    provider = "anthropic" if os.environ.get("ANTHROPIC_API_KEY") else "openai"
-    engine = ContentEngine(model_provider=provider)
+    # 自动检测提供商
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        provider = "anthropic"
+        model = "claude-sonnet-4-20250514"
+    elif os.environ.get("MINIMAX_API_KEY"):
+        provider = "minimax"
+        model = "MiniMax-Text-01"  # Minimax 模型名
+    else:
+        provider = "openai"
+        model = "gpt-4o"
+
+    engine = ContentEngine(model=model, model_provider=provider)
 
     # 生成内容
     result = engine.generate(

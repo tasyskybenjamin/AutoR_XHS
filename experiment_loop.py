@@ -40,15 +40,22 @@ def run_experiment(
     if model_provider is None:
         if os.environ.get("ANTHROPIC_API_KEY"):
             model_provider = "anthropic"
+        elif os.environ.get("MINIMAX_API_KEY"):
+            model_provider = "minimax"
         elif os.environ.get("OPENAI_API_KEY"):
             model_provider = "openai"
         else:
             print("❌ 未设置 API 密钥")
-            print("请设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY 环境变量")
+            print("请设置 OPENAI_API_KEY / ANTHROPIC_API_KEY / MINIMAX_API_KEY 环境变量")
             return None
 
     # 选择模型
-    model = "claude-sonnet-4-20250514" if model_provider == "anthropic" else "gpt-4o"
+    if model_provider == "anthropic":
+        model = "claude-sonnet-4-20250514"
+    elif model_provider == "minimax":
+        model = "MiniMax-Text-01"
+    else:
+        model = "gpt-4o"
 
     print(f"使用模型: {model} ({model_provider})")
 
@@ -132,8 +139,8 @@ def main():
                         help="生成候选数量")
     parser.add_argument("--goal", default="提升点赞和收藏",
                         help="实验目标")
-    parser.add_argument("--provider", choices=["openai", "anthropic"],
-                        help="模型提供商")
+    parser.add_argument("--provider", choices=["openai", "anthropic", "minimax"],
+                        help="模型提供商 (openai/anthropic/minimax)")
 
     args = parser.parse_args()
 
